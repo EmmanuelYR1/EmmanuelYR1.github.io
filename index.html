@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Screen Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>AI Screen Assistant 🤖</h1>
+            <p>Captura tu pantalla y pregúntale a la IA lo que necesites saber.</p>
+        </header>
+        
+        <main>
+            <section class="capture-section">
+                <button id="captureBtn" class="primary-btn">📸 Capturar Pantalla</button>
+                <div class="preview-container" id="previewContainer" style="display: none;">
+                    <img id="screenshotPreview" src="" alt="Captura de pantalla">
+                    <button id="discardBtn" class="icon-btn" title="Descartar">❌</button>
+                </div>
+                <video id="videoElement" style="display: none;" autoplay></video>
+                <canvas id="canvasElement" style="display: none;"></canvas>
+            </section>
+
+            <section class="chat-section">
+                <div class="input-group">
+                    <label for="promptInput">Tu pregunta a la IA:</label>
+                    <textarea id="promptInput" rows="3" placeholder="Ej: ¿Qué código hay en esta pantalla? o Explícame este gráfico..."></textarea>
+                </div>
+                <button id="askBtn" class="primary-btn pulse" disabled>✨ Preguntar a la IA</button>
+            </section>
+
+            <section class="response-section" id="responseSection" style="display: none;">
+                <h3>Respuesta de la IA:</h3>
+                <div id="loadingIndicator" class="loading" style="display: none;">Analizando la imagen... ⏳</div>
+                <div id="responseContent" class="markdown-body"></div>
+            </section>
+        </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
