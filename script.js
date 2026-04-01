@@ -1,152 +1,89 @@
-const captureBtn = document.getElementById('captureBtn');
-const askBtn = document.getElementById('askBtn');
-const discardBtn = document.getElementById('discardBtn');
-const videoElement = document.getElementById('videoElement');
-const canvasElement = document.getElementById('canvasElement');
-const previewContainer = document.getElementById('previewContainer');
-const screenshotPreview = document.getElementById('screenshotPreview');
-const promptInput = document.getElementById('promptInput');
-const responseSection = document.getElementById('responseSection');
-const responseContent = document.getElementById('responseContent');
-const loadingIndicator = document.getElementById('loadingIndicator');
+const startBtn = document.getElementById('startBtn');
+const snapBtn = document.getElementById('snapBtn');
+const videoPreview = document.getElementById('videoPreview');
+const statusText = document.getElementById('statusText');
+const canvasHidden = document.getElementById('canvasHidden');
+const resultContainer = document.getElementById('resultContainer');
+const captureResult = document.getElementById('captureResult');
+const sendAiBtn = document.getElementById('sendAiBtn');
 
-let currentImageBase64 = null;
+let mediaStream = null;
 
-captureBtn.addEventListener('click', async () => {
+startBtn.addEventListener('click', async () => {
     try {
-        // Solicitar permisos para grabar pantalla
-        const stream = await navigator.mediaDevices.getDisplayMedia({
+        statusText.style.display = "block";
+        statusText.innerText = "Solicitando permisos para capturar pantalla o pestaña...";
+        
+        // La API getDisplayMedia es la encargada de pedir al navegador web
+        // que comparta una pestaña, ventana o toda la pantalla.
+        mediaStream = await navigator.mediaDevices.getDisplayMedia({
             video: {
-                displaySurface: "monitor" // Preferir monitor completo
-            }
+                displaySurface: "browser", // 'browser' le pide sugerir pestañas primero
+                cursor: "always"
+            },
+            audio: false
         });
 
-        videoElement.srcObject = stream;
+        // Conectar el flujo de video (stream) al elemento <video> en HTML
+        videoPreview.srcObject = mediaStream;
+        videoPreview.style.display = "block";
+        statusText.style.display = "none";
         
-        // Esperar a que el video cargue su metadata para saber las dimensiones
-        videoElement.onloadedmetadata = () => {
-            // Ajustar el canvas al tamaño del video
-            canvasElement.width = videoElement.videoWidth;
-            canvasElement.height = videoElement.videoHeight;
-            
-            // Dibujar el frame actual en el canvas
-            const ctx = canvasElement.getContext('2d');
-            ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-            
-            // Obtener la imagen en base64
-            // Quitamos el prefijo 'data:image/jpeg;base64,' para la API de Gemini
-            currentImageBase64 = canvasElement.toDataURL('image/jpeg', 0.8);
-            
-            // Mostrar la imagen
-            screenshotPreview.src = currentImageBase64;
-            previewContainer.style.display = 'block';
-            captureBtn.style.display = 'none';
-            askBtn.disabled = false;
+        // Habilitar el botón de tomar foto
+        snapBtn.disabled = false;
+        startBtn.innerHTML = '<span class="icon">🔄</span> Cambiar Pestaña';
 
-            // Detener todos los tracks de la grabación de pantalla
-            stream.getTracks().forEach(track => track.stop());
+        // Evento que se dispara si el usuario hace clic en "Dejar de compartir" en el navegador
+        mediaStream.getVideoTracks()[0].onended = () => {
+            detenerCaptura();
         };
 
     } catch (err) {
-        console.error("Error al capturar la pantalla: ", err);
-        alert("No se pudo capturar la pantalla. Asegúrate de dar los permisos necesarios.");
+        console.error("Error al capturar:", err);
+        statusText.style.display = "block";
+        if (err.name === "NotAllowedError") {
+            statusText.innerText = "Error: El navegador denegó el permiso para capturar la pantalla. Puede que el navegador lo tenga este permiso completamente bloqueado.";
+        } else {
+            statusText.innerText = "Error al intentar capturar: " + err.message;
+        }
     }
 });
 
-discardBtn.addEventListener('click', () => {
-    currentImageBase64 = null;
-    screenshotPreview.src = '';
-    previewContainer.style.display = 'none';
-    captureBtn.style.display = 'block';
-    askBtn.disabled = true;
-    responseSection.style.display = 'none';
+snapBtn.addEventListener('click', () => {
+    if (!mediaStream) return;
+
+    // Obtener las dimensiones reales del flujo de video
+    const track = mediaStream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    canvasHidden.width = settings.width || videoPreview.videoWidth;
+    canvasHidden.height = settings.height || videoPreview.videoHeight;
+
+    // Dibujar el fotograma actual del video en un canvas (lienzo) escondido
+    const ctx = canvasHidden.getContext('2d');
+    ctx.drawImage(videoPreview, 0, 0, canvasHidden.width, canvasHidden.height);
+
+    // Transformar el canvas en una URL de imagen codificada en Base64
+    const imageDataUrl = canvasHidden.toDataURL('image/png');
+    
+    // Mostrar la imagen final renderizada
+    captureResult.src = imageDataUrl;
+    resultContainer.style.display = "block";
+    resultContainer.scrollIntoView({ behavior: 'smooth' });
 });
 
-askBtn.addEventListener('click', async () => {
-    const apiKey = "AIzaSyAqu8pMMwVY9-dXyWNkXAYH1H0NYgQv8QE";
-    const prompt = promptInput.value.trim();
-
-    if (!prompt) {
-        alert("Por favor, escribe una pregunta para la IA.");
-        return;
-    }
-
-    if (!currentImageBase64) {
-        alert("Por favor, captura tu pantalla primero.");
-        return;
-    }
-
-    // Preparar UI para la carga
-    responseSection.style.display = 'block';
-    responseContent.innerHTML = '';
-    loadingIndicator.style.display = 'block';
-    askBtn.disabled = true;
-
-    try {
-        // Extraer solo la parte en base64 (remover el data URI prefix)
-        const base64Data = currentImageBase64.split(',')[1];
-
-        // 1. Encontrar un modelo válido dinámicamente consultando qué modelos tiene disponibles tu API Key
-        const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-        if (!modelsRes.ok) throw new Error("Error al validar tu API Key con Google.");
-        
-        const modelsData = await modelsRes.json();
-        
-        // Buscamos un modelo que sea rápido (flash) o potente (pro) y que podamos estar seguros de que soporta visión en esta era
-        let selectedModelEndpoint = "";
-        for (const m of modelsData.models) {
-            if (m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent")) {
-                // Buscamos "flash" (los modelos flash desde 1.5 son todos multimodales) o "pro" (omitiendo el viejo 1.0 que es solo texto)
-                if (m.name.includes("flash") || m.name.includes("pro-vision") || m.name.includes("gemini-2")) {
-                    selectedModelEndpoint = `https://generativelanguage.googleapis.com/v1beta/${m.name}:generateContent?key=${apiKey}`;
-                    console.log("✅ Modelo seleccionado automáticamente por tu API Key:", m.name);
-                    break;
-                }
-            }
-        }
-
-        if (!selectedModelEndpoint) {
-            throw new Error("Tu API Key no tiene habilitado o autorizado ningún modelo actual de Gemini.");
-        }
-
-        const requestBody = {
-            contents: [{
-                parts: [
-                    { text: prompt },
-                    {
-                        inline_data: {
-                            mime_type: "image/jpeg",
-                            data: base64Data
-                        }
-                    }
-                ]
-            }]
-        };
-
-        const response = await fetch(selectedModelEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || `Error status ${response.status}`);
-        }
-
-        const data = await response.json();
-        const textResponse = data.candidates[0].content.parts[0].text;
-        
-        // Usar marked para parsear markdown
-        responseContent.innerHTML = marked.parse(textResponse);
-
-    } catch (error) {
-        console.error("Error en la petición a la IA: ", error);
-        responseContent.innerHTML = `<p style="color: #ef4444;"><strong>Error:</strong> ${error.message}</p>`;
-    } finally {
-        loadingIndicator.style.display = 'none';
-        askBtn.disabled = false;
-    }
+sendAiBtn.addEventListener('click', () => {
+    // Aquí es donde en un futuro enviarías la imagen (captureResult.src, que es el Base64) a Gemini/ChatGPT.
+    alert("Procesando imagen... \n¡Captura lista para enviarse mediante la API de la IA!");
 });
+
+function detenerCaptura() {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+    }
+    videoPreview.style.display = "none";
+    statusText.style.display = "block";
+    statusText.innerText = "Captura de pantalla detenida/cerrada.";
+    snapBtn.disabled = true;
+    startBtn.innerHTML = '<span class="icon">📷</span> Seleccionar Pestaña para Capturar';
+}

@@ -3,44 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Screen Assistant</title>
+    <title>Herramienta de Captura Avanzada - IA</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container">
+    <div class="background-anim"></div>
+    <div class="glass-container">
         <header>
-            <h1>AI Screen Assistant 🤖</h1>
-            <p>Captura tu pantalla y pregúntale a la IA lo que necesites saber.</p>
+            <h1>Captura Activa</h1>
+            <p>Selecciona la pestaña independiente (o pantalla web) que deseas registrar para análisis.</p>
         </header>
         
         <main>
-            <section class="capture-section">
-                <button id="captureBtn" class="primary-btn">📸 Capturar Pantalla</button>
-                <div class="preview-container" id="previewContainer" style="display: none;">
-                    <img id="screenshotPreview" src="" alt="Captura de pantalla">
-                    <button id="discardBtn" class="icon-btn" title="Descartar">❌</button>
-                </div>
-                <video id="videoElement" style="display: none;" autoplay></video>
-                <canvas id="canvasElement" style="display: none;"></canvas>
-            </section>
+            <div class="controls">
+                <button id="startBtn" class="btn primary-btn">
+                    <span class="icon">📷</span> Seleccionar Pestaña para Capturar
+                </button>
+                <button id="snapBtn" class="btn secondary-btn" disabled>
+                    <span class="icon">📸</span> Extraer Imagen
+                </button>
+            </div>
 
-            <section class="chat-section">
-                <div class="input-group">
-                    <label for="promptInput">Tu pregunta a la IA:</label>
-                    <textarea id="promptInput" rows="3" placeholder="Ej: ¿Qué código hay en esta pantalla? o Explícame este gráfico..."></textarea>
-                </div>
-                <button id="askBtn" class="primary-btn pulse" disabled>✨ Preguntar a la IA</button>
-            </section>
-
-            <section class="response-section" id="responseSection" style="display: none;">
-                <h3>Respuesta de la IA:</h3>
-                <div id="loadingIndicator" class="loading" style="display: none;">Analizando la imagen... ⏳</div>
-                <div id="responseContent" class="markdown-body"></div>
-            </section>
+            <div class="preview-container">
+                <video id="videoPreview" autoplay playsinline muted></video>
+                <p id="statusText">Esperando permisos para iniciar...</p>
+            </div>
+            
+            <div class="result-container" id="resultContainer" style="display: none;">
+                <h3>Resultado de la Captura:</h3>
+                <img id="captureResult" alt="Captura procesada" />
+                <button class="btn send-btn" id="sendAiBtn"><span class="icon">🤖</span> Enviar a Inteligencia Artificial</button>
+            </div>
+            
+            <canvas id="canvasHidden" style="display: none;"></canvas>
         </main>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
